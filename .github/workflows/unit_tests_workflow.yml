@@ -1,0 +1,58 @@
+name: Azure Unit Tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    types: [assigned, opened, synchronize, reopened, edited]
+    branches: [ master ]
+  workflow_dispatch:
+
+
+jobs:
+  allocate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Login via Azure CLI
+        id: login-az
+        run: |
+          az login \
+              -u ${{ secrets.AZURE_USER }} \
+              --password ${{ secrets.AZURE_PASSWORD }} \
+              --tenant ${{ secrets.AZURE_TENANT }}
+          old_state=$( az vm get-instance-view \
+              --name RD-T4-Unit-Tests2 \
+              --resource-group Kinetix_RD \
+              --query instanceView.statuses[1] \
+              --output table)
+          echo $old_state
+          echo "::set-output name=old_state::${old_state//[[:space:]]/}"
+
+      - name: Open unit tests instances
+        id: open-unit-tests-instances
+        run: |
+            # Will try to turn all instances on (will repeat it every second for 100 seconds, for each instance)
+            InstanceNames=("RD-T4-Unit-Tests2" "RD-Unit-Tests")
+            
+            for i_name in "${InstanceNames[@]}"; do
+              ( for i in $(seq 1 100); do
+                 ( az vm start --resource-group Kinetix_RD --name "$i_name";
+                 az vm run-command invoke \
+                   --resource-group Kinetix_RD \
+                   --name "$i_name" \
+                   --command-id RunShellScript \
+                   --scripts "echo Running" )
+                 sleep 1;
+              done
+              ) &
+            done
+
+  unit-tests:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v1
+      - name: Running video tests
+        run: |
+          source ~/anaconda3/etc/profile.d/conda.sh
+          conda activate;
+          python tests;
