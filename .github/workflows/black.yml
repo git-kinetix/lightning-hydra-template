@@ -9,7 +9,7 @@ jobs:
       - name: Check files using the black formatter
         uses: psf/black@stable
         with:
-          option: "--line-length=140"
+          options: "--line-length=140"
       - name: Create Pull Request
         if: steps.action_black.outputs.is_formatted == 'true'
         uses: peter-evans/create-pull-request@v3
