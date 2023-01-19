@@ -8,6 +8,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Check files using the black formatter
         uses: psf/black@stable
+        id: action_black
         with:
           options: "--line-length=140"
       - name: Create Pull Request
